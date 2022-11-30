@@ -7,6 +7,7 @@ the second algorithm), is implemented.
     and Efficient Machine Learning". 2018.
 """
 import warnings
+import copy
 import pandas as pd
 import joblib
 
@@ -103,6 +104,8 @@ class Decouple:
             pred_df.insert(sens_count, attr, None)
             sens_count = sens_count + 1
 
+        X2_pred = copy.deepcopy(X_pred)
+
         #Iterate over every entry in the prediction dataframe and use the corresponding model of
         #the best global model combination.
         for i, row in X_pred.iterrows():
@@ -121,22 +124,19 @@ class Decouple:
                 for j, gt in enumerate(group_tuple):
                     group_found = True
                     for k in range(len(self.sens_attrs)):
-
                         if pred_sens[k] != gt[k]:
                             group_found = False
-                            break
+                            X2_pred.loc[i, self.sens_attrs[0]] = abs(X_pred.loc[i, self.sens_attrs[0]] - 1)
                     if group_found:
                         group = comb[j]
-                        break
             else:
                 group_found = True
                 for k in range(len(self.sens_attrs)):
                     if pred_sens[k] != group_tuple[k]:
                         group_found = False
-                        break
+                        X2_pred.loc[i, self.sens_attrs[0]] = abs(X_pred.loc[i, self.sens_attrs[0]] - 1)
                 if group_found:
                     group = comb[j]
-                    break
 
             #Load the corresponding model of the model combination and predict the label of the
             #current entry of the prediction dataset.

@@ -39,8 +39,8 @@ ccr = [-1,-1]
 #(10) which cluster parameter estimation strategy to choose (needed depending on ccr)
 #"LOGmeans", "elbow"
 ca = "LOGmeans"
-#(11) randomstate; if set to -1 it will randomly choose a randomstate
-randomstate = -1
+#(11) randomstate
+randomstate = 100
 #(12) run only FALCC or also the other algorithms
 testall = True
 #(13) if the amount of sensitive groups is binary, the FairBoost algorithm can be run
@@ -54,7 +54,7 @@ for loop, input_file in enumerate(input_file_list):
     allowed = allowed_list[loop]
     fairboost = fairboost_list[loop]
     
-    link = "Results/" + str(proxy) + "_" + str(input_file) + "/"
+    link = "Results/Exp2_" + str(proxy) + "_" + str(input_file) + "/"
 
     try:
         os.makedirs(link)
@@ -62,28 +62,30 @@ for loop, input_file in enumerate(input_file_list):
         pass
 
     #Run offline and online phases
-    subprocess.check_call(['python', '-Wignore', 'main_offline.py', '-i', str(input_file),
+    subprocess.check_call(['python', '-Wignore', 'main_offline_exp2.py', '-i', str(input_file),
         '-o', str(link), '--sensitive', str(sensitive), '--label', str(label),
         '--favored', str(favored), '--ccr', str(ccr), '--metric', str(metric),
         '--training', str(training), '--fairboost', str(fairboost), '--randomstate',
         str(randomstate), "--proxy", str(proxy), "--allowed", str(allowed),
         '--testall', str(testall), '--cluster_algorithm', str(ca)])
-    subprocess.check_call(['python', '-Wignore', 'main_online.py', '--folder', str(link)])
 
-    #Run evaluation
+
     if testall:
-        if training != "no":
-            models = ["Decouple", "Decouple-SBT", "FALCES", "FALCES-PFA", "FALCES-SBT", "FALCES-SBT-PFA",\
-                "FALCES-NEW", "FALCES-PFA-NEW", "FALCES-SBT-NEW", "FALCES-SBT-PFA-NEW", "FALCC", "FALCC-SBT"]
-        else:
-            models = ["Decouple", "FALCES", "FALCES-PFA", "FALCES-NEW", "FALCES-PFA-NEW", "FALCC"]
+        models = ["Decouple-SBT", "FALCES-SBT", "FALCES-SBT-PFA", "FALCES-SBT-NEW", "FALCES-SBT-PFA-NEW", "FALCC-SBT"]
         if fairboost:
             models.append("FairBoost")
     else:
-        if training != "no":
-            models = ["FALCC", "FALCC-SBT"]
-        else:
-            models = ["FALCC"]
-    subprocess.check_call(['python', '-Wignore', 'evaluation.py', '--ds', str(input_file),
-        '--folder', str(link), '--sensitive', str(sensitive), '--label', str(label),
-        '--favored', str(favored), '--proxy', str(proxy), '--models', str(models)])
+        models = ["FALCC-SBT"]
+
+    for i in range(11):
+        link2 = link + str(i) + "/"
+        if os.path.isdir(link2):
+            if fairboost:
+                subprocess.check_call(['cp', str(link) + "FairBoost_prediction_output.csv", link2])
+            subprocess.check_call(['cp', link + "testdata_predictions.csv", link2])
+            subprocess.check_call(['cp', link + "cluster.out.bak", link2])
+            subprocess.check_call(['cp', link + "cluster.out.dat", link2])
+            subprocess.check_call(['cp', link + "cluster.out.dir", link2])
+            subprocess.check_call(['python', '-Wignore', 'evaluation.py', '--ds', str(input_file),
+                '--folder', str(link2), '--sensitive', str(sensitive), '--label', str(label),
+                '--favored', str(favored), '--proxy', str(proxy), '--models', str(models)])

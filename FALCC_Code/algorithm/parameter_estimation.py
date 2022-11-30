@@ -1,4 +1,4 @@
-"""Implements LOG-Means [1] algorithm for parameter estimation of KMeans.
+"""Implements the LOG-Means [1] algorithm for parameter estimation of KMeans.
 [1] Fritz, M., Behringer, M., Schwarz, H. "LOG-Means: Efficiently Estimating
     the Number of Clusters in Large Datasets". 2020.
 """

@@ -31,13 +31,17 @@ class Models():
 
     sens_attrs: list of strings
         List of the column names of sensitive attributes in the dataset.
+
+    ignore_sens: boolean
+        Proxy is set to TRUE if the sensitive attribute should be ignored.
     """
-    def __init__(self, X_train, X_test, y_train, y_test, sens_attrs):
+    def __init__(self, X_train, X_test, y_train, y_test, sens_attrs, ignore_sens=False):
         self.X_train = X_train
         self.X_test = X_test
         self.y_train = y_train
         self.y_test = y_test
         self.sens_attrs = sens_attrs
+        self.ignore_sens = ignore_sens
 
 
     def decision_tree(self, sample_weight):
@@ -58,11 +62,18 @@ class Models():
         "dectree": string of the used model name
         """
         clf = DecisionTreeClassifier()
-        if sample_weight is not None:
-            clf.fit(self.X_train, self.y_train, sample_weight)
+        if self.ignore_sens:
+            if sample_weight is not None:
+                clf.fit(self.X_train[list(set(self.X_train.columns)-set(self.sens_attrs))], self.y_train, sample_weight)
+            else:
+                clf = clf.fit(self.X_train[list(set(self.X_train.columns)-set(self.sens_attrs))], self.y_train)
+            dt_pred = clf.predict(self.X_test[list(set(self.X_test.columns)-set(self.sens_attrs))])
         else:
-            clf = clf.fit(self.X_train, self.y_train)
-        dt_pred = clf.predict(self.X_test)
+            if sample_weight is not None:
+                clf.fit(self.X_train, self.y_train, sample_weight)
+            else:
+                clf = clf.fit(self.X_train, self.y_train)
+            dt_pred = clf.predict(self.X_test)
 
         return clf, dt_pred, "dectree"
 
@@ -85,11 +96,19 @@ class Models():
         "linsvm": string of the used model name
         """
         clf = Pipeline([("scaler", StandardScaler()), ("linear_svc", LinearSVC(C=1, loss="hinge"))])
-        if sample_weight is not None:
-            clf.fit(self.X_train, self.y_train, **{'linear_svc__sample_weight': sample_weight})
+        if self.ignore_sens:
+            if sample_weight is not None:
+                clf.fit(self.X_train[list(set(self.X_train.columns)-set(self.sens_attrs))], self.y_train,
+                    **{'linear_svc__sample_weight': sample_weight})
+            else:
+                clf.fit(self.X_train[list(set(self.X_train.columns)-set(self.sens_attrs))], self.y_train)
+            svm_pred = clf.predict(self.X_test[list(set(self.X_test.columns)-set(self.sens_attrs))])
         else:
-            clf.fit(self.X_train, self.y_train)
-        svm_pred = clf.predict(self.X_test)
+            if sample_weight is not None:
+                clf.fit(self.X_train, self.y_train, **{'linear_svc__sample_weight': sample_weight})
+            else:
+                clf.fit(self.X_train, self.y_train)
+            svm_pred = clf.predict(self.X_test)
 
         return clf, svm_pred, "linsvm"
 
@@ -113,11 +132,19 @@ class Models():
         """
         clf = Pipeline([("poly_features", PolynomialFeatures(degree=2)), \
             ("scaler", StandardScaler()), ("svm_clf", LinearSVC(C=10, loss="hinge"))])
-        if sample_weight is not None:
-            clf.fit(self.X_train, self.y_train, **{'svm_clf__sample_weight': sample_weight})
+        if self.ignore_sens:
+            if sample_weight is not None:
+                clf.fit(self.X_train[list(set(self.X_train.columns)-set(self.sens_attrs))], self.y_train,
+                    **{'svm_clf__sample_weight': sample_weight})
+            else:
+                clf.fit(self.X_train[list(set(self.X_train.columns)-set(self.sens_attrs))], self.y_train)
+            svm_pred = clf.predict(self.X_test[list(set(self.X_test.columns)-set(self.sens_attrs))])
         else:
-            clf.fit(self.X_train, self.y_train)
-        svm_pred = clf.predict(self.X_test)
+            if sample_weight is not None:
+                clf.fit(self.X_train, self.y_train, **{'svm_clf__sample_weight': sample_weight})
+            else:
+                clf.fit(self.X_train, self.y_train)
+            svm_pred = clf.predict(self.X_test)
 
         return clf, svm_pred, "nonlinsvm"
 
@@ -140,11 +167,18 @@ class Models():
         "logregr": string of the used model name
         """
         clf = LogisticRegression(solver='lbfgs')
-        if sample_weight is not None:
-            clf.fit(self.X_train, self.y_train, sample_weight)
+        if self.ignore_sens:
+            if sample_weight is not None:
+                clf.fit(self.X_train[list(set(self.X_train.columns)-set(self.sens_attrs))], self.y_train, sample_weight)
+            else:
+                clf.fit(self.X_train[list(set(self.X_train.columns)-set(self.sens_attrs))], self.y_train)
+            reg_pred = clf.predict(self.X_test[list(set(self.X_test.columns)-set(self.sens_attrs))])
         else:
-            clf.fit(self.X_train, self.y_train)
-        reg_pred = clf.predict(self.X_test)
+            if sample_weight is not None:
+                clf.fit(self.X_train, self.y_train, sample_weight)
+            else:
+                clf.fit(self.X_train, self.y_train)
+            reg_pred = clf.predict(self.X_test)
 
         return clf, reg_pred, "logregr"
 
@@ -167,11 +201,18 @@ class Models():
         "softmaxregr": string of the used model name
         """
         clf = LogisticRegression(multi_class="multinomial", solver="lbfgs", C=10)
-        if sample_weight is not None:
-            clf.fit(self.X_train, self.y_train, sample_weight)
+        if self.ignore_sens:
+            if sample_weight is not None:
+                clf.fit(self.X_train[list(set(self.X_train.columns)-set(self.sens_attrs))], self.y_train, sample_weight)
+            else:
+                clf.fit(self.X_train[list(set(self.X_train.columns)-set(self.sens_attrs))], self.y_train)
+            reg_pred = clf.predict(self.X_test[list(set(self.X_test.columns)-set(self.sens_attrs))])
         else:
-            clf.fit(self.X_train, self.y_train)
-        reg_pred = clf.predict(self.X_test)
+            if sample_weight is not None:
+                clf.fit(self.X_train, self.y_train, sample_weight)
+            else:
+                clf.fit(self.X_train, self.y_train)
+            reg_pred = clf.predict(self.X_test)
 
         return clf, reg_pred, "softmaxregr"
 
@@ -197,9 +238,15 @@ class Models():
         abc = AdaBoostClassifierMult([LogisticRegression(),
             Pipeline([("scaler", StandardScaler()), ("clf", LinearSVC(C=1, loss="hinge"))]),
             DecisionTreeClassifier()], modelsize)
-        classifier_list = abc.fit(self.X_train, self.y_train)
+        if self.ignore_sens:
+            classifier_list = abc.fit(self.X_train[list(set(self.X_train.columns)-set(self.sens_attrs))], self.y_train)
+        else:
+            classifier_list = abc.fit(self.X_train, self.y_train)
         estimator_predictions = []
         for classifier in classifier_list:
-            estimator_predictions.append(classifier.predict(self.X_test))
+            if self.ignore_sens:
+                estimator_predictions.append(classifier.predict(self.X_test[list(set(self.X_test.columns)-set(self.sens_attrs))]))
+            else:
+                estimator_predictions.append(classifier.predict(self.X_test))
 
         return classifier_list, estimator_predictions, "adaboost"

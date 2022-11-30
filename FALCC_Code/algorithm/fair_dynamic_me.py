@@ -4,6 +4,7 @@ This python file contains the implementations for the (original) FALCES [1] fram
     Classifications using Ensembles". 2022.
 """
 import warnings
+import copy
 import pandas as pd
 import joblib
 from sklearn.neighbors import NearestNeighbors
@@ -122,6 +123,8 @@ class FALCES:
             pred_df.insert(sens_count, attr, None)
             sens_count = sens_count + 1
 
+        X2_pred = copy.deepcopy(X_pred)
+
         #Build the KNN Tree for each group. Only possible if the data is preprocessed accordingly.
         grouped_df = self.X_test.groupby(self.sens_attrs)
         knn_tree_list = []
@@ -167,9 +170,13 @@ class FALCES:
                 if isinstance(key, tuple):
                     if key == tuple(X_pred[self.sens_attrs].iloc[i]):
                         group_count = count
+                    else:
+                        X2_pred.iloc[i][self.sens_attrs[0]] = abs(X_pred.iloc[i][self.sens_attrs[0]] - 1)
                 else:
                     if key == tuple(X_pred[self.sens_attrs].iloc[i])[0]:
                         group_count = count
+                    else:
+                        X2_pred.iloc[i][self.sens_attrs[0]] = abs(X_pred.iloc[i][self.sens_attrs[0]] - 1)
                 count = count + 1
 
             if isinstance(index_list[0], list):

@@ -12,6 +12,9 @@ class ModelOps():
     ----------
     model_dict: dictionary
         Saves information about each trained classifier.
+
+    ignore_sens: boolean
+        Proxy is set to TRUE if the sensitive attribute should be ignored.
     """
     def __init__(self, model_dict):
         self.model_dict = model_dict

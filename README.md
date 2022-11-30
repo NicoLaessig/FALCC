@@ -1,10 +1,14 @@
 # FALCC
 
-This repository contains the codes needed to reproduce the experiments of our submitted ICDE 2023 paper:
+This repository contains the codes needed to reproduce the experiments of our submitted VLDB 2023 paper:
 "FALCC: Efficiently performing fair and accurate local classifications through local region clustering"
 
 Run "full_test.py" and use that file to adapt the parameters (e.g. change datasets etc.).
-The description is within that file.
+The description is within that file. 
+For the second experiment, run "full_test_exp2.py". For this experiment it will run the SBT versions only.
+full_test.py is configurable to be used with other numerical datasets, while full_test_exp2.py might run into problems & is specialized for the experiments shown in the paper.
+
+The code has been tested using a Windows PC. Other systems, like Mac might create shelve files in other versions, requiring adaptations.
 
 The code runs the algorithms FALCC & FALCC-SBT, FALCES and its variants [1], Decouple & Decouple-SBT [2] and FairBoost [3]
 

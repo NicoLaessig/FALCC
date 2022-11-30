@@ -131,6 +131,12 @@ class FairBoost:
             pred_df.insert(sens_count, attr, None)
             sens_count = sens_count + 1
 
+        X2_pred = copy.deepcopy(X_pred)
+        for i, row in X2_pred.iterrows():
+            if row[self.sens_attrs[0]] == 0:
+                row[self.sens_attrs[0]] = 1
+            else:
+                row[self.sens_attrs[0]] = 0
         count = 0
         for i, row in X_pred.iterrows():
             alpha_total = 0

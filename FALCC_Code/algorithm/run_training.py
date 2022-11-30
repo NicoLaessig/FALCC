@@ -5,7 +5,7 @@ import itertools
 import pandas as pd
 from algorithm.codes import Models, ModelOps
 
-class RunFALCES:
+class RunTraining:
     """This class runs the training for the algorithms.
 
     Parameters
@@ -31,8 +31,11 @@ class RunFALCES:
 
     link: str
         String of the folder location + prefix.
+
+    ignore_sens: bool
+        Set to True if the sensitive attributes additionally should be ignored for the prediction.
     """
-    def __init__(self, X_test, y_test, test_id_list, sens_attrs, index, label, link):
+    def __init__(self, X_test, y_test, test_id_list, sens_attrs, index, label, link, ignore_sens=False):
         self.X_test = X_test
         self.y_test = y_test
         self.test_id_list = test_id_list
@@ -40,6 +43,7 @@ class RunFALCES:
         self.index = index
         self.label = label
         self.link = link
+        self.ignore_sens = ignore_sens
 
 
     def train(self, model_training_list, X_train, y_train, sample_weight, modelsize):
@@ -78,7 +82,7 @@ class RunFALCES:
         model_comb: list of tuple
             List of tuples of model combinations.
         """
-        model = Models(X_train, self.X_test, y_train, self.y_test, self.sens_attrs)
+        model = Models(X_train, self.X_test, y_train, self.y_test, self.sens_attrs, self.ignore_sens)
 
         model_list = []
 
@@ -219,7 +223,7 @@ class RunFALCES:
             X_test_group = self.X_test.loc[add_test]
             y_test_group = self.y_test.loc[add_test]
 
-            model = Models(X_train_group, X_test_group, y_train_group, y_test_group, self.sens_attrs)
+            model = Models(X_train_group, X_test_group, y_train_group, y_test_group, self.sens_attrs, self.ignore_sens)
 
             #Dictionary containing all models of the following form: {Group_key: {Model Name:
             #[(1) Saved Model as .pkl, (2) Prediction of the model for our test data,

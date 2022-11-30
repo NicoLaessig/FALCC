@@ -38,14 +38,23 @@ class FALCC:
         All possible model combinations.
 
     d: dictionary
-        Dictionary containing model-related information
+        Dictionary containing model-related information.
+
+    proxy: string
+        Name of the proxy strategy used
+
+    weight_dict: dictionary
+        Dictionary containing the column weights (if a proxy strategy is used)
+
+    ignore_sens: boolean
+        Proxy is set to TRUE if the sensitive attribute should be ignored.
 
     pre_processed: boolean
         Is set to True, if the datasets have been properly preprocessed. For the current
         new approach, this is a requirement.
     """
     def __init__(self, metricer, index, sens_attrs, label, favored, model_list, X_test,
-        model_comb, d, pre_processed=True):
+        model_comb, d, proxy, weight_dict=None, ignore_sens=False, pre_processed=True):
         self.metricer = metricer
         self.index = index
         self.sens_attrs = sens_attrs
@@ -55,6 +64,9 @@ class FALCC:
         self.X_test = X_test
         self.model_comb = model_comb
         self.d = d
+        self.proxy = proxy
+        self.weight_dict = weight_dict
+        self.ignore_sens = ignore_sens
         self.pre_processed = pre_processed
 
 
@@ -103,6 +115,19 @@ class FALCC:
             sens_count = sens_count + 1
             X_pred_cluster = X_pred_cluster.loc[:, X_pred_cluster.columns != attr]
 
+        if self.proxy in ("reweigh", "remove"):
+            for col in list(X_pred_cluster.columns):
+                if col in self.weight_dict:
+                    X_pred_cluster[col] *= self.weight_dict[col]
+                else:
+                    X_pred_cluster = X_pred_cluster.loc[:, X_pred_cluster.columns != col]
+
+        Z_pred = copy.deepcopy(X_pred)
+        if self.ignore_sens:
+            for sens in self.sens_attrs:
+                Z_pred = Z_pred.loc[:, Z_pred.columns != sens]
+        Z2_pred = copy.deepcopy(Z_pred)
+
         for i in range(len(X_pred)):
             sens_value = []
             for attr in self.sens_attrs:
@@ -110,10 +135,18 @@ class FALCC:
 
             cluster_results = kmeans.predict(X_pred_cluster.iloc[i].values.reshape(1, -1))
 
-
             model = model_dict[cluster_results[0]][str(sens_value)]
             used_model = joblib.load(model)
-            prediction = used_model.predict(X_pred.iloc[i].values.reshape(1, -1))[0]
+            if str(sens_value) == "[0.0]":
+                Z2_pred.iloc[i][self.sens_attrs[0]] = 1.0
+            elif str(sens_value) == "[1.0]":
+                Z2_pred.iloc[i][self.sens_attrs[0]] = 0.0
+            elif str(sens_value) == "[1]":
+                Z2_pred.iloc[i][self.sens_attrs[0]] = 0
+            else:
+                Z2_pred.iloc[i][self.sens_attrs[0]] = 1
+
+            prediction = used_model.predict(Z_pred.iloc[i].values.reshape(1, -1))[0]
 
             pred_df.at[pred_count, self.index] = y_pred.index[i]
             for attr in self.sens_attrs:
@@ -127,7 +160,8 @@ class FALCC:
         return pred_df
 
 
-    def cluster_offline(self, X_test_cluster, kmeans, test_df, metric, weight, link, sbt):
+    def cluster_offline(self, X_test_cluster, kmeans, test_df, metric, weight, link,
+        other_folder=None, sbt=True):
         """The third step of the offline phase of FALCC and FALCC-SBT.
 
         Parameters
@@ -151,6 +185,9 @@ class FALCC:
 
         link: string
             Directory where data should be saved.
+
+        other_folder: string
+            Additional folder string, solely used for the 2nd experiment.
 
         sbt: boolean
             If set to True, the classifiers were trained on splitted datasets.
@@ -210,12 +247,20 @@ class FALCC:
 
             if not sbt:
                 model_test = self.metricer.test_score(part_df2, self.model_list)
-                model_test.to_csv(link + str(key) + "_inaccuracy_testphase.csv",
-                    index_label=self.index)
+                if other_folder != None:
+                    model_test.to_csv(link + str(other_folder) + "/" + str(key) + "_inaccuracy_testphase.csv",
+                        index_label=self.index)
+                else:
+                    model_test.to_csv(link + str(key) + "_inaccuracy_testphase.csv",
+                        index_label=self.index)
             else:
                 model_test = self.metricer.test_score_sbt(part_df2, self.d)
-                model_test.to_csv(link + str(key) + "_inaccuracy_testphase_sbt.csv",
-                    index_label=self.index)
+                if other_folder != None:
+                    model_test.to_csv(link + str(other_folder) + "/" + str(key) + "_inaccuracy_testphase_sbt.csv",
+                        index_label=self.index)
+                else:
+                    model_test.to_csv(link + str(key) + "_inaccuracy_testphase_sbt.csv",
+                        index_label=self.index)
             comb_list_global, group_tuple = self.metricer.fairness_metric(model_test,
                 self.model_comb, self.favored, metric, weight, comb_amount=1)
 

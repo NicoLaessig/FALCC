@@ -10,7 +10,6 @@ import pandas as pd
 from sklearn.neighbors import NearestNeighbors
 
 warnings.simplefilter(action='ignore')
-
 parser = argparse.ArgumentParser()
 parser.add_argument("--folder", type=str, help="Directory containing the shelve.out file and\
     all important data")
@@ -18,47 +17,38 @@ parser.add_argument("--ds", type=str, help="Name of the dataset")
 parser.add_argument("--sensitive", type=str, help="List of column names of the sensitive attributes.")
 parser.add_argument("--favored", default=None, type=str, help="Tuple of favored group.\
     Otherwise some metrics can't be used. Default: None.")
-parser.add_argument("--metric", default="demographic_parity", type=str, help="Metric which will be\
-    used to test the classifier combinations. Default metric: mean.")
-parser.add_argument("--weight", default=0.5, type=float, help="The weight value is used for\
-    balancing the importance of accuracy vs fairness. Default value: 0.5")
 parser.add_argument("--label", type=str, help="Column name of the target value.")
-parser.add_argument("--clustersize", type=int, help="Amount of clusters.")
-parser.add_argument("--algo_type", type=str, help="Which algorithm type has been used:\
-    FALCES-CLUSTER, FALCES-NEW, FALCES.")
-parser.add_argument("--fairboost", type=str, help="If the FairBoost algorithm was applied or not.")
+parser.add_argument("--proxy", type=str, help="If the proxy technique was used.")
+parser.add_argument("--models", type=str, help="List of models that were trained.")
 args = parser.parse_args()
 
 link = args.folder
 ds = args.ds
 sens_attrs = ast.literal_eval(args.sensitive)
 favored = ast.literal_eval(args.favored)
-metric = args.metric
-weight = float(args.weight)
 label = args.label
-algo_type = args.algo_type
-if args.fairboost == "True":
-    fairboost = True
-else:
-    fairboost = False
+proxy = args.proxy
+model_list = ast.literal_eval(args.models)
 
-model_list = ["FALCES", "FALCES-PFA", "FALCES-NEW", "FALCES-PFA-NEW", "FALCC",\
-    "Decouple-SBT", "FALCES-SBT", "FALCES-SBT-PFA", "FALCES-SBT-NEW",\
-    "FALCES-SBT-PFA-NEW", "FALCC-SBT"]
-if fairboost:
-    model_list.append("FairBoost")
 
-df = pd.read_csv(link + "Decouple_prediction_output.csv", index_col="index")
+df = pd.read_csv(link + model_list[0] + "_prediction_output.csv", index_col="index")
 test_df = pd.read_csv(link + "testdata_predictions.csv", index_col="index")
 
 #Combine the output of all models
-for model in model_list:
+for i, model in enumerate(model_list):
+    if i == 0:
+        continue
     df2 = pd.read_csv(link + model + "_prediction_output.csv", index_col="index")
     df = pd.merge(df, df2[[model]], how="inner", left_index=True, right_index=True)
 df.to_csv(link + "MODEL_COMPARISON.csv", index=False)
 
 #Read the original dataset
-orig_dataset = pd.read_csv("Datasets/" + ds + ".csv", index_col="index")
+if proxy == "no":
+    orig_dataset = pd.read_csv("Datasets/" + ds + ".csv", index_col="index")
+elif proxy == "reweigh":
+    orig_dataset = pd.read_csv("Datasets/reweigh/" + ds + ".csv", index_col="index")
+elif proxy == "remove":
+    orig_dataset = pd.read_csv("Datasets/removed/" + ds + ".csv", index_col="index")
 data_index_list = []
 for i, rows in df.iterrows():
     data_index_list.append(i)
@@ -67,12 +57,10 @@ dataset = orig_dataset.loc[data_index_list]
 
 #Create DataFrame with all columns for the evaluation result.
 result_df = pd.DataFrame(columns=["dataset", "model", "inaccuracy", "demographic_parity",
-    "equalized_odds", "equal_opportunity", "test_fairness", "treatment_equality", "lrd_dp",
-    "lrd_eod", "lrd_eop", "lrd_tf", "lrd_te", "impact", "metric-score", "metric", "weight",
-    "group_testsize", "group_predsize"])
+    "equalized_odds", "equal_opportunity", "treatment_equality", "lrd_dp", "lrd_eod", "lrd_eop",
+    "lrd_te", "impact", "group_testsize", "group_predsize"])
 
 #Now evaluate each model according to the metrics implemented.
-model_list = ["Decouple"] + model_list
 model_count = 0
 
 filename = link + "cluster.out"
@@ -85,9 +73,6 @@ my_shelf.close()
 for model in model_list:
     result_df.at[model_count, "model"] = model
     result_df.at[model_count, "dataset"] = ds
-    result_df.at[model_count, "metric"] = metric
-    result_df.at[model_count, "weight"] = weight
-
     grouped_df = df.groupby(sens_attrs)
     total_ppv = 0
     total_size = 0
@@ -141,6 +126,7 @@ for model in model_list:
 
 
     result_df.at[model_count, "inaccuracy"] = wrong_predicted/total_size * 100
+    result_df.at[model_count, "accuracy"] = 100 - wrong_predicted/total_size * 100
     result_df.at[model_count, "group_testsize"] = group_testsize
     result_df.at[model_count, "group_predsize"] = group_predsize
     testsize = 0
@@ -148,15 +134,13 @@ for model in model_list:
     for i in range(len(group_testsize)):
         testsize = testsize + group_testsize[i]
         predsize = predsize + group_predsize[i]
-    #result_df.at[model_count, "testsize"] = testsize
-    #result_df.at[model_count,  "predsize"] = predsize
+
 
     #Iterate again for formula
     count = 0
     dp = 0
     eq_odd = 0
     eq_opp = 0
-    tf = 0
     tr_eq = 0
     impact = 0
     fp = 0
@@ -246,25 +230,10 @@ for model in model_list:
                 group_ppv_lower += df.loc[i, model]
                 group_count_lower += 1
 
-            if count_bigger > 0 and count_lower > 0:
-                if group_count_bigger > 0 and group_count_lower > 0:
-                    tf = (tf + 0.5*abs(total_ppv_bigger/count_bigger - group_ppv_bigger/group_count_bigger)
-                        + 0.5*abs(total_ppv_lower/count_lower - group_ppv_lower/group_count_lower))
-                elif group_count_bigger == 0:
-                    tf = tf + abs(total_ppv_lower/count_lower - group_ppv_lower/group_count_lower)
-                elif group_count_lower == 0:
-                    tf = tf + abs(total_ppv_bigger/count_bigger - group_ppv_bigger/group_count_bigger)
-            elif count_bigger == 0:
-                tf = tf + abs(total_ppv_lower/count_lower - group_ppv_lower/group_count_lower)
-            elif count_lower == 0:
-                tf = tf + abs(total_ppv_bigger/count_bigger - group_ppv_bigger/group_count_bigger)
-
-
 
     result_df.at[model_count, "demographic_parity"] = dp/(len(grouped_df)) * 100
     result_df.at[model_count, "equalized_odds"] = eq_odd/(len(grouped_df)) * 100
     result_df.at[model_count, "equal_opportunity"] = eq_opp/(len(grouped_df)) * 100
-    result_df.at[model_count, "test_fairness"] = (tf/(len(grouped_df)) * 100)/len(cluster_cols)
     result_df.at[model_count, "treatment_equality"] = tr_eq/(len(grouped_df)) * 100
     result_df.at[model_count, "impact"] = impact/(len(grouped_df) - 1) * 100
 
@@ -276,6 +245,12 @@ dataset2 = dataset2.loc[:, dataset2.columns != "index"]
 dataset2 = dataset2.loc[:, dataset2.columns != label]
 for sens in sens_attrs:
     dataset2 = dataset2.loc[:, dataset2.columns != sens]
+if proxy == "remove":
+    outfile = open(link + "removed_attributes.txt", 'r')
+    Lines = outfile.readlines()   
+    for line in Lines:
+        line = line.replace("\n", "")
+        dataset2 = dataset2.loc[:, dataset2.columns != line]
 
 
 cluster_results = kmeans.predict(dataset2)
@@ -297,14 +272,12 @@ for i, row in groups.iterrows():
 models_lrd_dp = []
 models_lrd_eod = []
 models_lrd_eop = []
-models_lrd_tf = []
 models_lrd_te = []
 #Calculate local region discrimination (lrd) of the model.
 for model in model_list:
     lrd_dp = 0
     lrd_eod = 0
     lrd_eop = 0
-    lrd_tf = 0
     lrd_te = 0
     for key, item in clustered_df:
         part_df = clustered_df.get_group(key)
@@ -338,6 +311,12 @@ for model in model_list:
                                 knn_df = knn_df.loc[:, knn_df.columns != sens_attr]
                             knn_df = knn_df.loc[:, knn_df.columns != "index"]
                             knn_df = knn_df.loc[:, knn_df.columns != label]
+                            if proxy == "remove":
+                                outfile = open(link + "removed_attributes.txt", 'r')
+                                Lines = outfile.readlines()
+                                for line in Lines:
+                                    line = line.replace("\n", "")
+                                    knn_df = knn_df.loc[:, knn_df.columns != line]
                             nbrs = NearestNeighbors(n_neighbors=10, algorithm='kd_tree').fit(knn_df.values)
                             indices = nbrs.kneighbors(cluster_center.reshape(1, -1), return_distance=False)
                             real_indices = df.index[indices].tolist()
@@ -384,7 +363,6 @@ for model in model_list:
         lrd_local_dp = 0
         lrd_local_eod = 0
         lrd_local_eop = 0
-        lrd_local_tf = 0
         lrd_local_te = 0
         cluster_count = 0
         cluster_count_y0 = 0
@@ -451,18 +429,12 @@ for model in model_list:
     models_lrd_te.append(lrd_te)
 
 
-metric = "mean-to-mean" if result_df.at[0, "metric"] == "mean" else result_df.at[0, "metric"]
-weight = result_df.at[0, "weight"]
 model_count = 0
 for model in model_list:
     result_df.at[model_count, "lrd_dp"] = models_lrd_dp[model_count] * 100
     result_df.at[model_count, "lrd_eod"] = models_lrd_eod[model_count] * 100
     result_df.at[model_count, "lrd_eop"] = models_lrd_eop[model_count] * 100
-    result_df.at[model_count, "lrd_tf"] = "TODO"
     result_df.at[model_count, "lrd_te"] = models_lrd_te[model_count] * 100
-    result_df.at[model_count, "metric-score"] = weight * result_df.at[model_count, "inaccuracy"]\
-        + (1 - weight) * result_df.at[model_count, metric]
     model_count = model_count + 1
-
 
 result_df.to_csv(link + "EVALUATION.csv")
