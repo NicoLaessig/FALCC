@@ -372,47 +372,30 @@ d_list = [q_list[-1][0], combn4, combn3, combn2, combn1, combn0, comb0, comb1, c
 
 #Estimate the clustersize and then create the clusters
 if proxy == "reweigh":
-    X_test_new = copy.deepcopy(X_test)
-    df_new = copy.deepcopy(df)
-    weight_dict = dict()
-    cols = list(df_new.columns)
-    cols.remove(label)
-    for sens in sens_attrs:
-        cols.remove(sens)
-
-    grouped_df = df_new.groupby(sens_attrs)
-    key_list = []
-    pdf_list = []
-    for key, item in grouped_df:
-        if key == favored:
-            fav = grouped_df.get_group(key)
-            continue
-        key_list.append(key)
-        pdf_list.append(grouped_df.get_group(key))
-
-    y_arr = df_new[label].to_numpy()
-    for col in cols:
-        if col in allowed:
-            weight_dict[col] = 1
-            continue
-        x_arr = df_new[col].to_numpy()
-        corr = abs(np.corrcoef(x_arr, y_arr)[0][1])
-        #mutual_score = normalized_mutual_info_score(x_arr, y_arr)
-        if math.isnan(corr):
-            corr = 1
-        mean_fav = fav[col].mean()
-        col_diff = 0
+    with open(link + "reweighing_attributes.txt", 'w') as outfile:
+        X_test_new = copy.deepcopy(X_test)
+        df_new = copy.deepcopy(df)
+        weight_dict = dict()
+        cols = list(df_new.columns)
+        cols.remove(label)
         for sens in sens_attrs:
-            z_arr = df_new[sens]
-            sens_corr = abs(np.corrcoef(x_arr, z_arr)[0][1])
-            if math.isnan(sens_corr):
-                sens_corr = 1
-            col_diff += (1 - sens_corr)
-        col_weight = col_diff/len(sens_attrs)
-        #col_weight = (1 - col_diff) * (1 - corr)
-        weight_dict[col] = col_weight
-        df_new[col] *= col_weight
-        X_test_new[col] *= col_weight
+            cols.remove(sens)
+
+        for col in cols:
+            if col in allowed:
+                weight_dict[col] = 1
+                continue
+            x_arr = df_new[col].to_numpy()
+            col_diff = 0
+            for sens in sens_attrs:
+                z_arr = df_new[sens]
+                sens_corr = abs(pearsonr(x_arr, z_arr)[0])
+                col_diff += (1 - sens_corr)
+            col_weight = col_diff/len(sens_attrs)
+            weight_dict[col] = col_weight
+            df_new[col] *= col_weight
+            X_test_new[col] *= col_weight
+            outfile.write(col + ": " + str(col_weight) + "\n")
     df_new.to_csv("Datasets/reweigh/" + input_file + ".csv", index_label=index)
 elif proxy == "remove":
     with open(link + "removed_attributes.txt", 'w') as outfile:
@@ -424,47 +407,24 @@ elif proxy == "remove":
         for sens in sens_attrs:
             cols.remove(sens)
 
-        grouped_df = df_new.groupby(sens_attrs)
-        key_list = []
-        pdf_list = []
-        for key, item in grouped_df:
-            if key == favored:
-                fav = grouped_df.get_group(key)
-                continue
-            key_list.append(key)
-            pdf_list.append(grouped_df.get_group(key))
-
-        y_arr = df_new[label].to_numpy()
         for col in cols:
             cont = False
             if col in allowed:
                 weight_dict[col] = 1
                 continue
             x_arr = df_new[col].to_numpy()
-            corr = abs(np.corrcoef(x_arr, y_arr)[0][1])
-            #mutual_score = normalized_mutual_info_score(x_arr, y_arr)
-            if math.isnan(corr):
-                corr = 1
-            mean_fav = fav[col].mean()
             col_diff = 0
             for sens in sens_attrs:
                 z_arr = df_new[sens]
-                #sens_corr = abs(np.corrcoef(x_arr, z_arr)[0][1])
                 pearson = pearsonr(x_arr, z_arr)
                 sens_corr = abs(pearson[0])
-                if math.isnan(sens_corr):
-                    sens_corr = 1
                 if sens_corr > 0.5 and pearson[1] < 0.05:
                     X_test_new = X_test_new.loc[:, X_test_new.columns != col]
                     cont = True
                     outfile.write(col + "\n")
                     continue
-                col_diff += (1 - sens_corr)
             if not cont:
-                col_weight = 1
                 weight_dict[col] = 1
-                df_new[col] *= col_weight
-                X_test_new[col] *= col_weight
         df_new.to_csv("Datasets/removed/" + input_file + ".csv", index_label=index)
 else:
     X_test_new = X_test

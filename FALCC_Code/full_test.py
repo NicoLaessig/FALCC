@@ -17,13 +17,13 @@ import pandas as pd
 #####################################################################################
 #Here we need to specify:
 #(1) the dataset name(s)
-input_file_list = ["implicit30", "social30"]
+input_file_list = ["Communities", "implicit30", "social30"]
 #(2) the name(s) of the sensitive attributes as a list
-sens_attrs_list = [["sensitive"], ["sensitive"]]
+sens_attrs_list = [["race"], ["sensitive"], ["sensitive"]]
 #(3) the value of the favored group
-favored_list = [(0), (0)]
+favored_list = [(1), (0), (0)]
 #(4) the name of the label
-label_list = ["label", "label"]
+label_list = ["crime", "label", "label"]
 #(5) the metric for which the results should be optimized:
 #"demographic_parity", "equalized_odds", "equal_opportunity", "treatment_equality"
 metric = "demographic_parity"
@@ -33,7 +33,7 @@ training = "adaboost"
 #(7) if a proxy strategy is used ("no", "reweigh", "remove")
 proxy = "reweigh"
 #(8) list of allowed "proxy" attributes (required, if reweigh or remove strategy is chosen)
-allowed_list = [[""], [""]]
+allowed_list = [[""], [""], [""]]
 #(9) the minimum and maximum clustersize (if set to -1, we use our automatic approach)
 ccr = [-1,-1]
 #(10) which cluster parameter estimation strategy to choose (needed depending on ccr)
@@ -42,7 +42,7 @@ ca = "LOGmeans"
 #(11) randomstate; if set to -1 it will randomly choose a randomstate
 randomstate = -1
 #(12) run only FALCC or also the other algorithms
-testall = True
+testall = False
 #(13) if the amount of sensitive groups is binary, the FairBoost algorithm can be run
 fairboost_list = [True, True]
 #####################################################################################
