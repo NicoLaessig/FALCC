@@ -15,7 +15,7 @@ class RunTraining:
         m_features is the number of features.
 
     y_test: array-like, shape (n_samples)
-        Label vector relative to the test data x_test.
+        Label vector relative to the test data X_test.
 
     test_id_list: list of ids
         List of all indices of the test dataset.
@@ -35,18 +35,20 @@ class RunTraining:
     ignore_sens: bool
         Set to True if the sensitive attributes additionally should be ignored for the prediction.
     """
-    def __init__(self, X_test, y_test, test_id_list, sens_attrs, index, label, link, ignore_sens=False):
+    def __init__(self, X_test, y_test, test_id_list, sens_attrs, index, label, favored, link, input_file, ignore_sens=False):
         self.X_test = X_test
         self.y_test = y_test
         self.test_id_list = test_id_list
         self.sens_attrs = sens_attrs
         self.index = index
         self.label = label
+        self.favored = favored
         self.link = link
+        self.input_file = input_file
         self.ignore_sens = ignore_sens
 
 
-    def train(self, model_training_list, X_train, y_train, sample_weight, modelsize):
+    def train(self, model_training_list, X_train, y_train, attrs):
         """Train all classifiers.
 
         Parameters
@@ -82,18 +84,18 @@ class RunTraining:
         model_comb: list of tuple
             List of tuples of model combinations.
         """
-        model = Models(X_train, self.X_test, y_train, self.y_test, self.sens_attrs, self.ignore_sens)
+        model = Models(X_train, self.X_test, y_train, self.y_test, self.sens_attrs, self.favored, self.ignore_sens)
 
         model_list = []
 
         MOps = ModelOps({})
         for i in model_training_list:
-            if i in ("RandomForest", "AdaBoost"):
-                filename_list = MOps.run(model, i, sample_weight, self.link, modelsize)
+            if i in ("RandomForest", "AdaBoost", "OptimizedAdaBoost", "OptimizedRandomForest", "AdaBoostClassic", "RandomForestClassic"):
+                filename_list = MOps.run(model, i, self.link, self.input_file, attrs=attrs)
                 for j in filename_list:
                     model_list.append(j)
             else:
-                filename = MOps.run(model, i, sample_weight, self.link, modelsize)
+                filename = MOps.run(model, i, self.link)
                 model_list.append(filename)
         d = MOps.return_dict()
 
@@ -131,8 +133,8 @@ class RunTraining:
 
 
 
-    def sbt_train(self, model_training_list, X_train, y_train, train_id_list, sample_weight,
-        key_list, modelsize):
+    def sbt_train(self, model_training_list, X_train, y_train, train_id_list, 
+        key_list, attrs):
         """Train all classifiers on the splitted dataset.
 
         Parameters
@@ -185,7 +187,6 @@ class RunTraining:
         #Perform training for each classifier sparately
         for key in key_list:
             d_group = {}
-            sample_weight_group = [] if sample_weight is not None else None
             add_list = []
             train_group_id_list = []
             count = 0
@@ -194,14 +195,10 @@ class RunTraining:
                     if key == tuple(X_train[self.sens_attrs].loc[i]):
                         add_list.append(i)
                         train_group_id_list.append(train_id_list[count])
-                        if sample_weight is not None:
-                            sample_weight_group.append(sample_weight[count])
                 else:
                     if key == tuple(X_train[self.sens_attrs].loc[i])[0]:
                         add_list.append(i)
                         train_group_id_list.append(train_id_list[count])
-                        if sample_weight is not None:
-                            sample_weight_group.append(sample_weight[count])
                 count += 1
 
             add_test = []
@@ -231,14 +228,14 @@ class RunTraining:
             #Train and save each model on the training data set
             MOps = ModelOps({})
             for i in model_training_list:
-                if i in ("RandomForest", "AdaBoost"):
-                    filename_list = MOps.run(model, i, sample_weight,
-                        self.link + str(key) + "_", modelsize)
+                if i in ("RandomForest", "AdaBoost", "OptimizedAdaBoost", "OptimizedRandomForest", "AdaBoostClassic", "RandomForestClassic"):
+                    filename_list = MOps.run(model, i,
+                        self.link + str(key) + "_", self.input_file, sbt=True, attrs=attrs)
                     for j in filename_list:
                         model_list.append(j)
                 else:
-                    filename = MOps.run(model, i, sample_weight_group,
-                        self.link + str(key) + "_", modelsize)
+                    filename = MOps.run(model, i,
+                        self.link + str(key) + "_")
                     model_list.append(filename)
             d_group = MOps.return_dict()
 

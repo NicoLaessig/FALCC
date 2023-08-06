@@ -27,7 +27,7 @@ class ModelOps():
         return self.model_dict
 
 
-    def run(self, model_obj, model, sample_weight, folder, modelsize=10):
+    def run(self, model_obj, model, folder, input_file, sbt=False, attrs=None):
         """Takes as input the model that will be trained and will return the trained model
         name and will save the model as .pkl & also save some informations in the dictionary.
 
@@ -45,9 +45,6 @@ class ModelOps():
         folder: str
             String of the folder location + prefix.
 
-        modelsize: int
-            Amount of models that should be trained (for AdaBoost and Random Forest Classifiers)
-
 
         Returns
         -------
@@ -55,17 +52,23 @@ class ModelOps():
             Name of the .pkl file of the trained classifier.
         """
         if model == "DecisionTree":
-            classifier, prediction, model_name = model_obj.decision_tree(sample_weight)
+            classifier, prediction, model_name = model_obj.decision_tree()
         elif model == "LinearSVM":
-            classifier, prediction, model_name = model_obj.linear_svm(sample_weight)
+            classifier, prediction, model_name = model_obj.linear_svm()
         elif model == "NonlinearSVM":
-            classifier, prediction, model_name = model_obj.nonlinear_svm(sample_weight)
+            classifier, prediction, model_name = model_obj.nonlinear_svm()
         elif model == "LogisticRegression":
-            classifier, prediction, model_name = model_obj.log_regr(sample_weight)
+            classifier, prediction, model_name = model_obj.log_regr()
         elif model == "SoftmaxRegression":
-            classifier, prediction, model_name = model_obj.softmax_regr(sample_weight)
+            classifier, prediction, model_name = model_obj.softmax_regr()
+        elif model == "FaX":
+            classifier, prediction, model_name = model_obj.fax()
+        elif model == "Fair-SMOTE":
+            classifier, prediction, model_name = model_obj.smote()
+        elif model == "LFR":
+            classifier, prediction, model_name = model_obj.lfr()
         elif model == "AdaBoost":
-            classifier_list, prediction_list, model_name = model_obj.adaboost(modelsize)
+            classifier_list, prediction_list, model_name = model_obj.adaboost()
             joblist_file_list = []
             with open(folder + 'adaboost.txt', 'w') as f:
                 f.write(str(classifier_list))
@@ -79,6 +82,62 @@ class ModelOps():
                 joblist_file_list.append(joblib_file)
 
             return joblist_file_list
+        elif model == "RandomForestClassic":
+            classifier_list, prediction_list, model_name, rfc = model_obj.rf_classic(n_estimators=attrs[1], max_depth=attrs[2], criterion=attrs[3])
+            joblib_file = folder + "RandomForestClassic" + str(attrs[0])  + ".pkl"
+            joblib.dump(rfc, joblib_file)
+            joblist_file_list = []
+            with open(folder + 'rf_classic.txt', 'w') as f:
+                f.write(str(classifier_list))
+            for i, pred in enumerate(prediction_list):
+                d_list = []
+                joblib_file = folder + model_name + "_" + str(i) + "_model.pkl"
+                joblib.dump(classifier_list[i], joblib_file)
+                d_list.append(joblib_file)
+                d_list.append(pred)
+                self.model_dict[joblib_file] = d_list
+                joblist_file_list.append(joblib_file)
+
+            return joblist_file_list
+        elif model == "AdaBoostClassic":
+            classifier_list, prediction_list, model_name, abc = model_obj.adaboost_classic(n_estimators=attrs[1], max_depth=attrs[2], splitter=attrs[3])
+            joblib_file = folder + "AdaBoostClassic" + str(attrs[0])  + ".pkl"
+            joblib.dump(abc, joblib_file)
+            joblist_file_list = []
+            with open(folder + 'adaboost_classic.txt', 'w') as f:
+                f.write(str(classifier_list))
+            for i, pred in enumerate(prediction_list):
+                d_list = []
+                joblib_file = folder + model_name + "_" + str(i) + "_model.pkl"
+                joblib.dump(classifier_list[i], joblib_file)
+                d_list.append(joblib_file)
+                d_list.append(pred)
+                self.model_dict[joblib_file] = d_list
+                joblist_file_list.append(joblib_file)
+
+            return joblist_file_list
+        elif model in ["OptimizedRandomForest", "OptimizedAdaBoost"]:
+            if model == "OptimizedRandomForest":
+                classifier_list, prediction_list, model_name = model_obj.opt_learner("RandomForest", input_file, sbt)
+                joblist_file_list = []
+                with open(folder + 'optimized_random_forest.txt', 'w') as f:
+                    f.write(str(classifier_list))
+            elif model == "OptimizedAdaBoost":
+                classifier_list, prediction_list, model_name = model_obj.opt_learner("AdaBoost", input_file, sbt)
+                joblist_file_list = []
+                with open(folder + 'optimized_adaboost.txt', 'w') as f:
+                    f.write(str(classifier_list))
+            for i, pred in enumerate(prediction_list):
+                d_list = []
+                joblib_file = folder + model_name + "_" + str(i) + "_model.pkl"
+                joblib.dump(classifier_list[i], joblib_file)
+                d_list.append(joblib_file)
+                d_list.append(pred)
+                self.model_dict[joblib_file] = d_list
+                joblist_file_list.append(joblib_file)
+
+            return joblist_file_list
+
 
         d_list = []
         joblib_file = folder + model_name + "_model.pkl"
