@@ -5,10 +5,8 @@ This repository contains the codes needed to run the FALCC framework of our subm
 
 ## STRUCTURE
 
-The datasets can be found within `FALCC_Code/Datasets/`.
-
-The results will be stored within `FALCC_Code/Results/`.
-
+The datasets can be found within `FALCC_Code/Datasets/`.<br />
+The results will be stored within `FALCC_Code/Results/`.<br />
 In `run_falcc.py` you can see an example on how to call FALCC.
 
 
@@ -58,7 +56,7 @@ Only has the DataFrame X_pred as input that contains the data that should be cla
 
 For the experiments in the FALCC EDBT Paper we always use the default values given here except for *proxy* and *metric* as mentiond in the Experiments section.
 
+## References
 
-[1] N. Lässig, S. Oppold, M. Herschel. "Metrics and Algorithms for Locally Fair and Accurate Classifications using Ensembles". 2022.
-
-[2] M. Fritz, M. Behringer, H. Schwarz. "LOG-means: Efficiently estimating the number of clusters in large datasets". 2020.
+[1] N. Lässig, S. Oppold, M. Herschel. "Metrics and Algorithms for Locally Fair and Accurate Classifications using Ensembles". 2022.<br />
+[2] M. Fritz, M. Behringer, H. Schwarz. "LOG-means: Efficiently estimating the number of clusters in large datasets". 2020.<br />
