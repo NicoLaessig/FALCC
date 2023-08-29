@@ -29,13 +29,20 @@ class RunTraining:
     label: str
         Name of the label column.
 
+    favored: list of float
+        List of the favored values for each sensitive attribute
+
     link: str
         String of the folder location + prefix.
+
+    input_file: str
+        Name of the dataset.
 
     ignore_sens: bool
         Set to True if the sensitive attributes additionally should be ignored for the prediction.
     """
-    def __init__(self, X_test, y_test, test_id_list, sens_attrs, index, label, favored, link, input_file, ignore_sens=False):
+    def __init__(self, X_test, y_test, test_id_list, sens_attrs, index, label, favored, link,
+        input_file, ignore_sens=False):
         self.X_test = X_test
         self.y_test = y_test
         self.test_id_list = test_id_list
@@ -63,11 +70,9 @@ class RunTraining:
         y_train: array-like, shape (n_samples)
             Label vector relative to the training data X_train.
 
-        sample_weight: np.array
-            Numpy array of the weight of the samples. None, if no reweighing has taken place.
-
-        modelsize: int
-            Amount of models that should be trained (for AdaBoost and Random Forest Classifiers)
+        attrs: list
+            List contains parameter values if classic AdaBoost or classic RandomForest
+            approach is chosen.
 
 
         Returns/Output
@@ -90,7 +95,8 @@ class RunTraining:
 
         MOps = ModelOps({})
         for i in model_training_list:
-            if i in ("RandomForest", "AdaBoost", "OptimizedAdaBoost", "OptimizedRandomForest", "AdaBoostClassic", "RandomForestClassic"):
+            if i in ("RandomForest", "AdaBoost", "OptimizedAdaBoost", "OptimizedRandomForest",
+                "AdaBoostClassic", "RandomForestClassic"):
                 filename_list = MOps.run(model, i, self.link, self.input_file, attrs=attrs)
                 for j in filename_list:
                     model_list.append(j)
@@ -152,13 +158,10 @@ class RunTraining:
         train_id_list: list of ids
             List of all indices of the training dataset.
 
-        sample_weight: np.array
-            Numpy array of the weight of the samples. None, if no reweighing has taken place.
-
         key_list: list
             List of the sensitive attribute values.
 
-        modelsize: int
+        attrs: int
             Amount of models that should be trained (for AdaBoost and Random Forest Classifiers)
 
 
@@ -228,7 +231,8 @@ class RunTraining:
             #Train and save each model on the training data set
             MOps = ModelOps({})
             for i in model_training_list:
-                if i in ("RandomForest", "AdaBoost", "OptimizedAdaBoost", "OptimizedRandomForest", "AdaBoostClassic", "RandomForestClassic"):
+                if i in ("RandomForest", "AdaBoost", "OptimizedAdaBoost", "OptimizedRandomForest",
+                    "AdaBoostClassic", "RandomForestClassic"):
                     filename_list = MOps.run(model, i,
                         self.link + str(key) + "_", self.input_file, sbt=True, attrs=attrs)
                     for j in filename_list:

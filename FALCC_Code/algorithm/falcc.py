@@ -36,51 +36,46 @@ class FALCC:
 
     Parameters
     ----------
-    metricer: Object of the Metrics class.
-        Created object of the Metrics class, so its functions can be used.
+    link: str
+        Link of the output directory.
 
-    index: string
-        String name of the index.
+    filename: str
+        Name of the dataset (used for naming).
+
+    df: {array-like, sparse matrix}, shape (n_samples, m_features)
+        Whole DataFrame
 
     sens_attrs: list of strings
         List of the column names of the sensitive attributes in the dataset.
 
-    label: string
-        String name of the target column.
-
     favored: tuple of float
         Tuple of the values of the favored group.
 
-    model_list: list of strings
-        List of the model names.
+    label: string
+        String name of the target column.
 
-    X_test: {array-like, sparse matrix}, shape (n_samples, m_features)
-        Test data vector, where n_samples is the number of samples and
-        m_features is the number of features.
-
-    model_comb: list of tuple
-        All possible model combinations.
-
-    d: dictionary
-        Dictionary containing model-related information.
+    training: string
+        String name of which training procedure is chosen
 
     proxy: string
         Name of the proxy strategy used
 
-    link: str
-        Link of the output directory.
+    trained_models: list of strings
+        Location of already trained classifiers (they have to be in .pkl format)
 
-    fairinput: boolean
-        Is set to True, if we use fair classifiers as input.
-
-    weight_dict: dictionary
-        Dictionary containing the column weights (if a proxy strategy is used)
+    allowed: list of strings
+        Feature names that should not be affected by the rpoxy mitigation strategy
 
     ignore_sens: boolean
         Proxy is set to TRUE if the sensitive attribute should be ignored.
 
+    sbt: boolean
+        Value is set to true if the classifiers should only be trained on subset of the data
+        or on the whole dataset.
+
     """
-    def __init__(self, link, filename, df, sens_attrs, favored, label, training, proxy, trained_models=None, allowed="", ignore_sens=False, sbt=False):
+    def __init__(self, link, filename, df, sens_attrs, favored, label, training, proxy,
+        trained_models=None, allowed="", ignore_sens=False, sbt=False):
         self.link = link
         self.filename = filename
         self.df = df
@@ -95,19 +90,25 @@ class FALCC:
         self.sbt = sbt
 
 
-    def fit(self, X_train, y_train, X_test, y_test, metric="demographic_parity", weight=0.5, cluster_algorithm="LOGmeans", ccr=[-1,-1]):
-        """The third step of the offline phase of FALCC and FALCC-SBT.
+    def fit(self, X_train, y_train, X_test, y_test, metric="demographic_parity", weight=0.5,
+        cluster_algorithm="LOGmeans", ccr=[-1,-1]):
+        """The offline phase of the FALCC algorithm.
 
         Parameters
         ----------
-        X_test_cluster: {array-like, sparse matrix}, shape (n_samples, m_features)
-            Dataset without sensitive attributes, but added cluster numbers.
+        X_train: {array-like, sparse matrix}, shape (n_samples, m_features)
+            Training data vector, where n_samples is the number of samples and
+            m_features is the number of features.
 
-        kmeans: k-means object
-            Already includes generated cluster via kmeans.
+        y_train: array-like, shape (n_samples)
+            Label vector relative to the training data X_train.
 
-        test_df: DataFrame, shape (n_samples, m_features)
-            Each entry contains a sample and its prediction per model.
+        X_test: {array-like, sparse matrix}, shape (n_samples, m_features)
+            Test data vector, where n_samples is the number of samples and
+            m_features is the number of features.
+
+        y_test: array-like, shape (n_samples)
+            Label vector relative to the training data X_test.
 
         metric: string
             Name of the metric which should be used to get the best result.
@@ -117,22 +118,17 @@ class FALCC:
             Under 0.5: Give fairness higher importance.
             Over 0.5: Give accuracy higher importance.
 
-        other_folder: string
-            Additional folder string, solely used for the 2nd experiment.
+        cluster_algorithm: string
+            String of the parameter estimation algorithm that should be chosen.
 
-        sbt: boolean
-            If set to True, the classifiers were trained on splitted datasets.
-
-
-        Returns/Output
-        ----------
-        model_dict: dictionary
-            Returns a dictionary which saves on which classifier should be used on the
-            corresponding samples (per cluster and sensitive attribute values).
+        ccr: List of size 2 of integers
+            Minimum and maximum amount of clusters that should be generated.
+            Unbounded is defined by -1.
         """
         if self.training == "single_classifiers":
             model_training_list = ["DecisionTree", "LinearSVM", "NonlinearSVM",\
                 "LogisticRegression", "SoftmaxRegression"]
+        #This option requires some additional work to implement FaX, Fair-SMOTE and LFR in FALCC
         elif self.training == "fair":
             model_training_list = ["FaX", "Fair-SMOTE", "LFR"]
         elif self.training == "opt_random_forest":
@@ -190,7 +186,7 @@ class FALCC:
 
 
         #Find the best global model combinations.
-        #Needed for FALCES-PFA & FALCES-PFA-SBT.
+        #Needed for FALCES-PFA & FALCES-PFA-SBT -- also for some metadata in FALCC.
         metricer = algorithm.codes.Metrics(self.sens_attrs, self.label)
         model_test = metricer.test_score(test_df, model_list)
         model_test.to_csv(self.link + "inaccuracy_testphase.csv", index_label=index)
@@ -294,9 +290,9 @@ class FALCC:
                 clustersize = kn.knee - 1
 
             #LOGMEANS
+            #Calls the LOGMeans method instead as the parameter estimation algorithm.
             if cluster_algorithm == "LOGmeans":
                 clustersize = log_means(X_test_cluster, min_cluster, max_cluster)
-
 
         #Save the number of generated clusters as metadata
         with open(self.link + "clustersize.txt", 'w') as outfile:
@@ -321,7 +317,6 @@ class FALCC:
 
         if self.proxy == "no":
             self.weight_dict = None
-
 
         clustered_df = X_test_cluster.groupby("cluster")
         self.model_dict = dict()
@@ -362,8 +357,10 @@ class FALCC:
                             if key2 == sens_grp:
                                 knn_df = grouped_df.get_group(key2)
                                 for sens_attr in self.sens_attrs:
-                                    knn_df2 = knn_df.loc[:, knn_df.columns != sens_attr]
-                                nbrs = NearestNeighbors(n_neighbors=15, algorithm='kd_tree').fit(knn_df2.values)
+                                    knn_df = knn_df.loc[:, knn_df.columns != sens_attr]
+                                nbrs = NearestNeighbors(n_neighbors=15, algorithm='kd_tree').fit(knn_df.values)
+                                print(cluster_center.shape)
+                                print(knn_df.shape)
                                 indices = nbrs.kneighbors(cluster_center.reshape(1, -1), return_distance=False)
                                 real_indices = X_test.index[indices].tolist()
                                 nearest_neighbors_df = test_df.loc[real_indices[0]]

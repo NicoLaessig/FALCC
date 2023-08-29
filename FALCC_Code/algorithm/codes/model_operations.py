@@ -36,14 +36,21 @@ class ModelOps():
         model_obj: Object
             Instance of the Model class.
 
-        model_name: str
+        model: str
             Name of the classifier that should be trained and saved.
-
-        sample_weight: np.array
-            Numpy array of the weight of the samples. None, if no reweighing has taken place.
 
         folder: str
             String of the folder location + prefix.
+
+        input_file: str
+            Name of the dataset.
+
+        sbt: boolean
+            Set to TRUE if split before training is activated.
+
+        attrs: list
+            List contains parameter values if classic AdaBoost or classic RandomForest
+            approach is chosen.
 
 
         Returns
@@ -83,7 +90,8 @@ class ModelOps():
 
             return joblist_file_list
         elif model == "RandomForestClassic":
-            classifier_list, prediction_list, model_name, rfc = model_obj.rf_classic(n_estimators=attrs[1], max_depth=attrs[2], criterion=attrs[3])
+            classifier_list, prediction_list, model_name, rfc = model_obj.rf_classic(n_estimators=attrs[1],
+                max_depth=attrs[2], criterion=attrs[3])
             joblib_file = folder + "RandomForestClassic" + str(attrs[0])  + ".pkl"
             joblib.dump(rfc, joblib_file)
             joblist_file_list = []
@@ -100,7 +108,8 @@ class ModelOps():
 
             return joblist_file_list
         elif model == "AdaBoostClassic":
-            classifier_list, prediction_list, model_name, abc = model_obj.adaboost_classic(n_estimators=attrs[1], max_depth=attrs[2], splitter=attrs[3])
+            classifier_list, prediction_list, model_name, abc = model_obj.adaboost_classic(n_estimators=attrs[1],
+                max_depth=attrs[2], splitter=attrs[3])
             joblib_file = folder + "AdaBoostClassic" + str(attrs[0])  + ".pkl"
             joblib.dump(abc, joblib_file)
             joblist_file_list = []

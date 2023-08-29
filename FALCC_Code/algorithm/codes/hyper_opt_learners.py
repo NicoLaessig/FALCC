@@ -215,6 +215,7 @@ class HyperOptimizedLearner:
             return
 
         search.fit(X, y)
+
         results = pd.DataFrame(search.cv_results_).sort_values(
             "rank_test_entropy", axis=0, ascending=True, ignore_index=True
         )

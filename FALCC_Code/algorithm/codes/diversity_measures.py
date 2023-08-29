@@ -59,7 +59,8 @@ class DiversityMeasures:
     def calculate_pairwise(self, X, y, estimators):
         """
         Calculate pairwise diversity metrics (Q-statistics and disagreement measure) for an ensemble of estimators.
-        This function has quadratic runtime complexity in the number of estimators given! Thus it is not suitable for a high amount (>20) of estimators.
+        This function has quadratic runtime complexity in the number of estimators given! Thus it is not
+        suitable for a high amount (>20) of estimators.
 
         Parameters
         ----------
@@ -123,7 +124,8 @@ class DiversityMeasures:
         total_samples = len(X)
         n_estimators = len(estimators)
 
-        # to return min(l(z_j),L-l(z_j)) efficiently, check if l(z_j) is higher than L/2 and then return the L-l(z_j) if true.
+        # to return min(l(z_j),L-l(z_j)) efficiently, check if l(z_j) is higher than L/2 and then
+        # return the L-l(z_j) if true.
         def minimum_in_E_formular(correct_preds):
             if correct_preds >= math.ceil(n_estimators / 2):
                 return n_estimators - correct_preds

@@ -43,6 +43,9 @@ class Models():
     sens_attrs: list of strings
         List of the column names of sensitive attributes in the dataset.
 
+    favored: tuple of float
+        Tuple of the values of the favored group.
+
     ignore_sens: boolean
         Proxy is set to TRUE if the sensitive attribute should be ignored.
     """
