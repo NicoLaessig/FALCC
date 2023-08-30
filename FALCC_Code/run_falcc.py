@@ -50,7 +50,7 @@ for loop, input_file in enumerate(input_file_list):
     X_train, X_testpred, y_train, y_testpred = train_test_split(X, y, test_size=0.5,
         random_state=100)
     X_test, X_pred, y_test, y_pred = train_test_split(X_testpred, y_testpred,
-        test_size=0.3, random_state=100)
+        test_size=0.3, random_state=randomstate)
 
     #Run FALCC
     falcc = algorithm.FALCC(link, input_file, df, sens_attrs, favored, label, training, proxy)
