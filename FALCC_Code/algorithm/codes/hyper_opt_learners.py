@@ -84,17 +84,17 @@ class HyperOptimizedLearner:
         None
         """
         rf_param_distributions = {
-            "n_estimators": range(3, 11),
+            "n_estimators": range(5, 20),
             "criterion": ["gini", "entropy"],
-            "max_depth": range(1, 5),
-            "max_features": ["sqrt", "log2"],
+            "max_depth": range(1, 7),
+            #"max_features": ["sqrt", "log2"],
         }
         ab_param_distributions = {
-            "n_estimators": range(5, 13),
-            "base_estimator__criterion": ["entropy"],
-            "base_estimator__splitter": ["best", "random"],
+            "n_estimators": range(5, 20),
+            "base_estimator__criterion": ["gini", "entropy"],
+            #"base_estimator__splitter": ["best", "random"],
             "base_estimator__max_depth": range(1, 7),
-            "base_estimator__max_features": [None],
+            #"base_estimator__max_features": [None],
         }
         if self.search_method == "random" and self.learner == "RandomForest":
             search = RandomizedSearchCV(
