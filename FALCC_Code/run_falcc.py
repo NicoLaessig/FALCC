@@ -12,10 +12,11 @@ warnings.filterwarnings("ignore")
 os.environ["PYTHONWARNINGS"] = "ignore"
 
 #In the following the parameters are specified, see the README in the repository for more information.
-input_file_list = ["adult_data_set"]
-sens_attrs_list = [["sex", "race"]]
-favored_list = [(0, 0)]
-label_list = ["salary"]
+#These are just examples for 4 datasets. It works analogously for the other datasets.
+input_file_list = ["communities", "implicit30", "social30", "adult_data_set"]
+sens_attrs_list = [["race"], ["sensitive"], ["sensitive"], ["sex", "race"]]
+favored_list = [(1), (0), (0), (0, 0)]
+label_list = ["crime", "label", "label", "salary"]
 metric = "demographic_parity"
 training = "opt_adaboost"
 proxy = "reweigh"
